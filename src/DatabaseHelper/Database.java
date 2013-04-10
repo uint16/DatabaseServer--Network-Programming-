@@ -139,7 +139,7 @@ public class Database {
 	 * @param columnNames Array of columns
 	 * @return Table in case of success, null in case of failure + Error is printed
 	 */
-	public Table getTableWithColumnds (String tableName, String[] columnNames){
+	public Table getTableWithColumns (String tableName, String[] columnNames){
 		try {
 			
 			String columnString="";
