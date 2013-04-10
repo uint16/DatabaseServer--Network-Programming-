@@ -15,20 +15,19 @@ import DatabaseHelper.Database;
 public class UserThread extends Thread {
 
     private BufferedReader input;
-    private String fileName;
+    private final String fileName;
     private Database db;
 
     /**
      * Create UserThread object
-     * 
      * @param filename
      *            database file name to execute SQL queries on
      */
-    public UserThread(String filename) {
+    public UserThread(final String filename) {
         fileName = filename;
         try {
             db = new Database(fileName);
-        } catch (FileNotFoundException e) {
+        } catch (final FileNotFoundException e) {
 
             e.printStackTrace();
         }
@@ -37,7 +36,7 @@ public class UserThread extends Thread {
     /**
      * Introduce user to how to perform SQL queries on database.
      */
-    public void startHere() {
+    public final void startHere() {
         System.out
                 .print("To use this P2P system please enter a valid SQL query, invalid SQL queries will not be handled and the program will exit.\n");
         System.err
@@ -47,23 +46,23 @@ public class UserThread extends Thread {
     /**
      * Receive SQL Queries from user, push query to runQuery() for processing.
      */
-    public void receiveQuery() {
+    public final void receiveQuery() {
         input = new BufferedReader(new InputStreamReader(System.in));
         boolean receivingQuery = true;
         System.out.println("Type \"exit\" to leave query input");
-        while (receivingQuery == true) {
+        while (receivingQuery) {
 
             try {
-                String SQLCommand = input.readLine();
+                final String sqlCommand = input.readLine();
 
-                if (SQLCommand.equals("exit")) {
+                if (sqlCommand.equals("exit")) {
                     receivingQuery = false;
                     input.close();
                     System.exit(0);
                 }
 
-                runQuery(SQLCommand);
-            } catch (IOException e) {
+                runQuery(sqlCommand);
+            } catch (final IOException e) {
 
                 e.printStackTrace();
             }
@@ -72,11 +71,10 @@ public class UserThread extends Thread {
 
     /**
      * Receive SQL query from user, execute the query to the database.
-     * 
      * @param command
      *            SQL query from the user
      */
-    public void runQuery(String command) {
+    public final void runQuery(final String command) {
 
         db.executeSQL(command);
     }
