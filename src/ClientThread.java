@@ -7,7 +7,7 @@ public class ClientThread implements Runnable {
 	private Database db;
 	
 	/**
-	 * Constructor for the class
+	 * Constructor for the client class
 	 * @param database Database file for the work
 	 */
 	public ClientThread (Database database){
@@ -18,7 +18,9 @@ public class ClientThread implements Runnable {
 	
 	
 	
-	@Override
+	/**
+	 * Runs the client thread
+	 */
 	public void run() {
 	
 		
