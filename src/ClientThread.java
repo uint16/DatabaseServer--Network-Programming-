@@ -1,6 +1,8 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.SocketChannel;
 
 import ASN1Encoder.Encoder;
 import DatabaseHelper.Column;
@@ -75,12 +77,15 @@ public class ClientThread implements Runnable {
 				InetAddress peerAddress=new InetAddress(peer_address_address_column.getObjectAtRow(i));
 				
 				
-				Socket test=new Socket();
+				SocketChannel test;
 				
 				try {
 					
 					
-					test.connect(new InetSocketAddress(peerAddress.adress, peerAddress.port), 2000); // 2000 is a timeout specified in assignment instructions
+					test=SocketChannel.open();
+					
+					// I didn't figure out how to setup timeout
+					test.socket().bind((new InetSocketAddress(peerAddress.adress, peerAddress.port))); // 2000 is a timeout specified in assignment instructions
 				
 					// At this point client is connected.
 					
@@ -88,15 +93,29 @@ public class ClientThread implements Runnable {
 					// Get last sync date 
 					String peer_id=(String) peer_address.getColumn("peer_id").getObjectAtRow(i); // Gets a peer_id. Since it should be the same, we can find this peer_id in peer table 
 					
+					String lastSyncDate=db.getSingleField("SELECT last_sync_date FROM peer WHERE peer_id='"+peer_id+"'");
 					
 					
 					
-					// Generate a message to the client
+					
+					// Construct request
 					
 					// message example { 20130410202659.999Z, tables{ ... , ... }}
 					Encoder requestEncoder=new Encoder();
 					requestEncoder.initSequence();
 					
+					Encoder lastSyncDateEncoded=new Encoder(lastSyncDate);
+					Encoder tables=new Encoder();
+					tables.initSequence();
+					tables.addToSequence(new Encoder("peer"));
+					tables.addToSequence(new Encoder("peer_address"));
+					
+					
+					requestEncoder.addToSequence(lastSyncDateEncoded);
+					requestEncoder.addToSequence(tables);
+					
+					
+					test.write(ByteBuffer.wrap(requestEncoder.getBytes())); // Send the data
 					
 					
 					

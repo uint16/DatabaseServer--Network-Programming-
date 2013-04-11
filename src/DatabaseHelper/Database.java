@@ -44,6 +44,13 @@ public class Database {
 		}
 
 		db = new SQLiteConnection(dbFile);
+
+		try {
+			db.open();
+		} catch (Exception e) {
+			System.err.println("Exception caught during construction ");
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -55,19 +62,25 @@ public class Database {
 	 * @param columnsString
 	 *            String that represents columns to be selected from table
 	 * @return Table under specified format
-	 * @retuen conditions. Should be in format "where ... ", or " " if no conditions.
+	 * @retuen conditions. Should be in format "where ... ", or " " if no
+	 *         conditions.
 	 * @throws SQLiteException
 	 *             If exception occurred during SQL execution
 	 */
-	private Table getTable(final String tableName,final String columnsString,
+	private Table getTable(final String tableName, final String columnsString,
 			final String conditions) throws SQLiteException {
 
 		// Open database to fill the whole table
-		db.openReadonly();
-		Table returnTable=null; // Table to return that will be updated in the end.
+		
+		Table returnTable = null; // Table to return that will be updated in the
+
+		String sql = String.format("SELECT %s FROM %s %s", columnsString,
+				tableName, conditions);
+		
+		System.out.println("SQL Performed :"+sql );
+		// end.
 		// Get whole table data
-		SQLiteStatement tableRows = db.prepare(String.format(
-				"SELECT %s FROM %s %s", columnsString, tableName, conditions));
+		SQLiteStatement tableRows = db.prepare(sql);
 
 		try {
 			// Create Columns
@@ -90,231 +103,258 @@ public class Database {
 			while (tableRows.step()) {
 
 				// Add A field to each column
-				for (int i=0;i<tableRows.columnCount();i++){
-					tableColumns[i].addObject(tableRows.columnString(i)); // TODO Fix it so column will check a type of field and define object on this basis.	
+				for (int i = 0; i < tableRows.columnCount(); i++) {
+					tableColumns[i].addObject(tableRows.columnString(i));
+
+					// TODO Instantiate a column of the same type as fields in
+					// the database
 				}
-				
 
 			}
 
-			returnTable=new Table(tableName, tableColumns, tableColumnsNames); // Update table
+			returnTable = new Table(tableName, tableColumns, tableColumnsNames); // Update
+																					// table
 
-		// In case if something crashes, cursor still needs to be closed
+			// In case if something crashes, cursor still needs to be closed
 		} finally {
 
 			tableRows.dispose();
 
 		}
 
-		
-		
-		
-		
 		// Close Database in the end of usage
-		db.dispose();
+
 		return returnTable;
 	}
 
 	/**
 	 * A class that gets a full table. No arguments, no columns
+	 * 
 	 * @param tableName
 	 * @return
 	 */
-	public Table getFullTable (String tableName){
-		
+	public Table getFullTable(String tableName) {
+
 		try {
-			return getTable (tableName, "*", "");
+			return getTable(tableName, "*", "");
 		} catch (SQLiteException e) {
-			
-			System.out.println("Error During getting the Table, null will be returned");
-			
+
+			System.out
+					.println("Error During getting the Table, null will be returned");
+
 			return null;
-		} 
-		
+		}
+
 	}
-	
+
 	/**
 	 * Function gets specific columns from the table without conditions
-	 * @param tableName Name of the table
-	 * @param columnNames Array of columns
-	 * @return Table in case of success, null in case of failure + Error is printed
+	 * 
+	 * @param tableName
+	 *            Name of the table
+	 * @param columnNames
+	 *            Array of columns
+	 * @return Table in case of success, null in case of failure + Error is
+	 *         printed
 	 */
-	public Table getTableWithColumns (String tableName, String[] columnNames){
+	public Table getTableWithColumns(String tableName, String[] columnNames) {
 		try {
-			
-			String columnString="";
-			
+
+			String columnString = "";
+
 			// construct string in format "a,b,c,d,e"
-			for (int i=0;i<columnNames.length;i++){
-				
-				columnString+=" "+columnNames[i]+",";
-				
+			for (int i = 0; i < columnNames.length; i++) {
+
+				columnString += " " + columnNames[i] + ",";
+
 			}
-			
-			columnString.substring(0, columnString.length()-1); // Chop off last comma
-			
-			return getTable (tableName, columnString, "");
+
+			columnString=columnString.substring(0, columnString.length() - 1); // Chop off
+																	// last
+																	// comma
+		
+			return getTable(tableName, columnString, "");
 		} catch (SQLiteException e) {
+
+			System.out
+					.println("Error During getting the Table, null will be returned");
 			
-			System.out.println("Error During getting the Table, null will be returned");
-			
+			e.printStackTrace();
+
 			return null;
-		} 
+		}
 	}
-	
+
 	/**
 	 * Get a table object where conditions are specified (e.g. where clause)
-	 * @param tableName name of the table
-	 * @param String - conditions. e.g. "fieldname="value" AND fieldname2="value" "
-	 * @return null if error, correct Table if no error. Error is printed if it occures.
+	 * 
+	 * @param tableName
+	 *            name of the table
+	 * @param String
+	 *            - conditions. e.g. "fieldname="value" AND fieldname2="value" "
+	 * @return null if error, correct Table if no error. Error is printed if it
+	 *         occures.
 	 */
-	public Table getTableWithConditions (String tableName, String conditions){
-		
+	public Table getTableWithConditions(String tableName, String conditions) {
+
 		try {
-			return getTable (tableName, "*", " where "+conditions);
+			return getTable(tableName, "*", " where " + conditions);
 		} catch (SQLiteException e) {
-			
-			System.err.println("Error During getting the Table, null will be returned");
-			
+
+			System.err
+					.println("Error During getting the Table, null will be returned");
+
 			return null;
-		} 
-		
+		}
+
 	}
-	
+
 	/**
 	 * Gets Table object where columns and conditions are specified
-	 * @param tableName Name of the table
-	 * @param columnNames array of column names to extract
-	 * @param conditions conditions without where
-	 * @return Table object if no error, null if error is catched + warning is printed
+	 * 
+	 * @param tableName
+	 *            Name of the table
+	 * @param columnNames
+	 *            array of column names to extract
+	 * @param conditions
+	 *            conditions without where
+	 * @return Table object if no error, null if error is catched + warning is
+	 *         printed
 	 */
-	public Table getTableWithFieldsAndColumns(String tableName,  String[] columnNames, String conditions){
-	try {
-			
-			String columnString="";
-			
+	public Table getTableWithFieldsAndColumns(String tableName,
+			String[] columnNames, String conditions) {
+		try {
+
+			String columnString = "";
+
 			// construct string in format "a,b,c,d,e"
-			for (int i=0;i<columnNames.length;i++){
-				
-				columnString+=" "+columnNames[i]+",";
-				
+			for (int i = 0; i < columnNames.length; i++) {
+
+				columnString += " " + columnNames[i] + ",";
+
 			}
-			
-			columnString.substring(0, columnString.length()-1); // Chop off last comma
-			
-			return getTable (tableName, columnString, "where "+conditions);
+
+			columnString=columnString.substring(0, columnString.length() - 1); // Chop off
+																	// last
+																	// comma
+
+			return getTable(tableName, columnString, "where " + conditions);
 		} catch (SQLiteException e) {
-			
-			System.err.println("Error During getting the Table, null will be returned");
-			
+
+			System.err
+					.println("Error During getting the Table, null will be returned");
+
+			e.printStackTrace();
 			return null;
-		} 
-		
-	
+		}
+
 	}
-	
+
 	/**
 	 * Executes sql without any return
-	 * @param sql SQL query
+	 * 
+	 * @param sql
+	 *            SQL query
 	 */
-	public void executeSQL (final String sql){
-	
-		try{
-		db.open();
-		
-		db.exec(sql);
-		
-		db.dispose();
-		} catch (Exception e){
-			
-			db.dispose();
+	public void executeSQL(final String sql) {
+
+		try {
+
+			db.exec(sql);
+
+		} catch (Exception e) {
+
 			System.err.println("DB sql execution failed. Check your SQL query");
-			
+
 		}
-		
+
 	}
-	
-	
+
 	/**
 	 * Executes an SQL and outputs a string with all SQL results
-	 * @param sql SQLite string to query
-	 * @return returns "" if error happened + prints an error message. 
+	 * 
+	 * @param sql
+	 *            SQLite string to query
+	 * @return returns "" if error happened + prints an error message.
 	 */
-	public String getSQLQueryAsString(final String sql){
-		String returnString="";
-		
-		try{
-		db.open();
-		
-		SQLiteStatement sqlResult=db.prepare(sql);
-		
-		// Scroll through all rows
-		while (sqlResult.step()){
-			
-			// And through each element in the row.
-			for (int i=0;i<sqlResult.columnCount();i++){
-				returnString+=sqlResult.columnString(i)+" ";
+	public String getSQLQueryAsString(final String sql) {
+		String returnString = "";
+
+		try {
+
+			SQLiteStatement sqlResult = db.prepare(sql);
+
+			// Scroll through all rows
+			while (sqlResult.step()) {
+
+				// And through each element in the row.
+				for (int i = 0; i < sqlResult.columnCount(); i++) {
+					returnString += sqlResult.columnString(i) + " ";
+				}
+
+				returnString += "\n";
 			}
-			
-			returnString+="\n";
-		}
-		
-		sqlResult.dispose();
-	
-		
-		} catch (Exception e){
-			
+
+			sqlResult.dispose();
+
+		} catch (Exception e) {
+
 			System.err.println("Error occured, lol... Actually it's SQL error");
-		
-			
+			e.printStackTrace();
+
 		} finally {
-			
-			db.dispose();
+
 			return returnString;
 		}
-		
+
 	}
 
 	/**
-	 * Gets a single field from sql query. The purpose of this method when SQL query assumes one object
-	 * @param sql SQL query that constructed in such a way that first object will be in first column first room
+	 * Gets a single field from sql query. The purpose of this method when SQL
+	 * query assumes one object
+	 * 
+	 * @param sql
+	 *            SQL query that constructed in such a way that first object
+	 *            will be in first column first room
 	 * @return first object in SQL response or "" in case of crash
 	 */
-	public String getSingleField (final String sql){
-		
-	String returnString="";
-		
-		try{
-		db.open();
-		
-		SQLiteStatement sqlResult=db.prepare(sql);
-		
-		// Scroll through all rows
-		if (sqlResult.step()){
-			
-		returnString=sqlResult.columnString(0);
-		
-		
-		}
-		
-		sqlResult.dispose();
-	
-		
-		} catch (Exception e){
-			
+	@SuppressWarnings("finally")
+	public String getSingleField(final String sql) {
+
+		String returnString = "";
+
+		try {
+
+			SQLiteStatement sqlResult = db.prepare(sql);
+
+			// Scroll through all rows
+			if (sqlResult.step()) {
+
+				returnString = sqlResult.columnString(0);
+
+			}
+
+			sqlResult.dispose();
+
+		} catch (Exception e) {
+
 			System.err.println("Error occured, lol... Actually it's SQL error");
-		
-			
+			e.printStackTrace();
+
 		} finally {
-			
-			db.dispose();
+
 			return returnString;
 		}
-		
-		
-		
+
 	}
 
+	/**
+	 * Action must be called in the end of db usage
+	 */
+	public void close() {
 
+		db.dispose();
+
+	}
 
 }
