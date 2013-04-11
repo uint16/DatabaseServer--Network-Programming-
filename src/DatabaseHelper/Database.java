@@ -234,4 +234,87 @@ public class Database {
 		
 	}
 	
+	
+	/**
+	 * Executes an SQL and outputs a string with all SQL results
+	 * @param sql SQLite string to query
+	 * @return returns "" if error happened + prints an error message. 
+	 */
+	public String getSQLQueryAsString(final String sql){
+		String returnString="";
+		
+		try{
+		db.open();
+		
+		SQLiteStatement sqlResult=db.prepare(sql);
+		
+		// Scroll through all rows
+		while (sqlResult.step()){
+			
+			// And through each element in the row.
+			for (int i=0;i<sqlResult.columnCount();i++){
+				returnString+=sqlResult.columnString(i)+" ";
+			}
+			
+			returnString+="\n";
+		}
+		
+		sqlResult.dispose();
+	
+		
+		} catch (Exception e){
+			
+			System.err.println("Error occured, lol... Actually it's SQL error");
+		
+			
+		} finally {
+			
+			db.dispose();
+			return returnString;
+		}
+		
+	}
+
+	/**
+	 * Gets a single field from sql query. The purpose of this method when SQL query assumes one object
+	 * @param sql SQL query that constructed in such a way that first object will be in first column first room
+	 * @return first object in SQL response or "" in case of crash
+	 */
+	public String getSingleField (final String sql){
+		
+	String returnString="";
+		
+		try{
+		db.open();
+		
+		SQLiteStatement sqlResult=db.prepare(sql);
+		
+		// Scroll through all rows
+		if (sqlResult.step()){
+			
+		returnString=sqlResult.columnString(0);
+		
+		
+		}
+		
+		sqlResult.dispose();
+	
+		
+		} catch (Exception e){
+			
+			System.err.println("Error occured, lol... Actually it's SQL error");
+		
+			
+		} finally {
+			
+			db.dispose();
+			return returnString;
+		}
+		
+		
+		
+	}
+
+
+
 }
