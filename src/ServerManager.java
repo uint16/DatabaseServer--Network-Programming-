@@ -8,36 +8,38 @@ import java.util.List;
 import DatabaseHelper.Database;
 
 
-public class ServerManager {
+public class ServerManager implements Runnable {
 
 
 	
 	public boolean runServer=true;
 	private Database db;
 	private int maxClients;
-	List<ServerThread> clients;
-	SocketChannel clientSocket;
+	private List<ServerThread> clients;
+	private int port;
 	
 	
-	
-	public ServerManager(Database _db, int _maxClients){
+	public ServerManager(Database _db, int _maxClients, int _port){
 		
 		db=_db;
 		maxClients=_maxClients;
-		
+		port=_port;
 	}
 	
 	
-	public void startListening (int port) throws IOException{
+	private void startListening () throws IOException{
 	
 		// Start Server on specific port
 		clients=new LinkedList();
 		ServerSocketChannel server= ServerSocketChannel.open();
 		server.socket().bind(new InetSocketAddress(port));
 		
-	
+		System.out.println("Server started on port "+port);
+		
 		// While nobody stopped server, keep accepting clients
 		while (runServer){
+			
+			SocketChannel clientSocket;
 			
 			clientSocket=server.accept();
 			
@@ -80,10 +82,21 @@ public class ServerManager {
 	public void removeThread(ServerThread thread){
 		
 		
-		
-		
+	
 		clients.remove(thread);
-		System.out.printf("Client with IP %s Disconnected, clients count: %d. %n", this.clientSocket.socket().getInetAddress().getHostAddress(), clients.size());
+		System.out.printf("Client  Disconnected, clients count: %d. %n",  clients.size());
+		
+	}
+
+
+	@Override
+	public void run() {
+		try {
+			startListening();
+		} catch (IOException e) {
+			System.err.println("Error occured while starting up a server");
+			e.printStackTrace();
+		}
 		
 	}
 		

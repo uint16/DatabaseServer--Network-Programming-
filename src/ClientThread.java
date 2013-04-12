@@ -1,8 +1,8 @@
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.Calendar;
 
 import ASN1Encoder.Encoder;
 import DatabaseHelper.Column;
@@ -63,6 +63,10 @@ public class ClientThread implements Runnable {
 		// While it's not stopped by internal error or external command
 		while (runLoop){
 			
+			// Wait for 5 seconds before actually refreshing
+			
+			
+			
 			
 			// Get all peers from the database
 			Table peer_address=db.getTableWithColumns("peer_address", new String[]{"peer_id", "address"});
@@ -81,17 +85,17 @@ public class ClientThread implements Runnable {
 				
 				try {
 					
-					
+					System.out.printf("Trying to connect to %s:%d%n", peerAddress.adress, peerAddress.port);
 					test=SocketChannel.open();
 					
 					// I didn't figure out how to setup timeout
-					test.socket().bind((new InetSocketAddress(peerAddress.adress, peerAddress.port))); // 2000 is a timeout specified in assignment instructions
+					test.socket().connect((new InetSocketAddress(peerAddress.adress, peerAddress.port))); // 2000 is a timeout specified in assignment instructions
 				
 					// At this point client is connected.
 					
 					
 					// Get last sync date 
-					String peer_id=(String) peer_address.getColumn("peer_id").getObjectAtRow(i); // Gets a peer_id. Since it should be the same, we can find this peer_id in peer table 
+					String peer_id=(String) peer_address.getColumn("peer_ID").getObjectAtRow(i); // Gets a peer_id. Since it should be the same, we can find this peer_id in peer table 
 					
 					String lastSyncDate=db.getSingleField("SELECT last_sync_date FROM peer WHERE peer_id='"+peer_id+"'");
 					
@@ -101,22 +105,50 @@ public class ClientThread implements Runnable {
 					// Construct request
 					
 					// message example { 20130410202659.999Z, tables{ ... , ... }}
-					Encoder requestEncoder=new Encoder();
-					requestEncoder.initSequence();
+					Encoder ASNSyncRequest=new Encoder();
+					ASNSyncRequest.initSequence();
+					/*
+					 
+					  This is required request. Build it
+					 
+					ASNSyncRequest ::= [APPLICATION 7] SEQUENCE {
+						version UTF8String, -- currently 2
+						lastSnapshot GeneralizedTime OPTIONAL,
+						tableNames [APPLICATION 0] SEQUENCE OF TableName OPTIONAL,
+						-- orgFilter [APPLICATION 1] SEQUENCE OF OrgFilter OPTIONAL,
+						-- address [APPLICATION 2] D_PeerAddress OPTIONAL,
+						-- request [APPLICATION 3] SpecificRequest OPTIONAL,
+						-- plugin_msg [APPLICATION 4] D_PluginData OPTIONAL,
+						-- plugin_info [APPLICATION 6] SEQUENCE OF ASNPluginInfo OPTIONAL,
+						-- pushChanges ASNSyncPayload OPTIONAL,
+						signature NULLOCTETSTRING -- prior to version 2 it was [APPLICATION 5]
+						}
 					
-					Encoder lastSyncDateEncoded=new Encoder(lastSyncDate);
-					Encoder tables=new Encoder();
-					tables.initSequence();
-					tables.addToSequence(new Encoder("peer"));
-					tables.addToSequence(new Encoder("peer_address"));
+					*/
+					
+					ASNSyncRequest.addToSequence(new Encoder("2")); // Version
+					
+					// We need a timestamp in Generalized Time
+					ASNSyncRequest.addToSequence(new Encoder(lastSyncDate));
+					
+					Encoder TableNames=new Encoder();
+					
+					// Construct sequence of tables
+					TableNames.initSequence();
+					TableNames.addToSequence(new Encoder("peer"));
+					TableNames.addToSequence(new Encoder("peer_date"));
+					
+					ASNSyncRequest.addToSequence(TableNames);
+					
+					// Some lines are commented out, so I add signature
+					
+					ASNSyncRequest.addToSequence(new Encoder("NULL"));
 					
 					
-					requestEncoder.addToSequence(lastSyncDateEncoded);
-					requestEncoder.addToSequence(tables);
+					test.write(ByteBuffer.wrap(ASNSyncRequest.getBytes())); // Send Bytes over the network
 					
-					
-					test.write(ByteBuffer.wrap(requestEncoder.getBytes())); // Send the data
-					
+					// For the purposes of one-connection test, close the loop after first conneciton
+					runLoop=false;
 					
 					
 				
@@ -124,6 +156,7 @@ public class ClientThread implements Runnable {
 				} catch (IOException e) {
 					
 					System.err.printf("[%s:%d  Error]: Peer has timed out.", peerAddress.adress, peerAddress.port);
+					
 				}
 				
 				
@@ -135,5 +168,7 @@ public class ClientThread implements Runnable {
 		} // End of runLoop
 		
 	}
+
+
 
 }

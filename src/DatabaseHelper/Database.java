@@ -2,6 +2,7 @@ package DatabaseHelper;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.util.Calendar;
 
 import com.almworks.sqlite4java.SQLiteConnection;
 import com.almworks.sqlite4java.SQLiteException;
@@ -16,7 +17,6 @@ import com.almworks.sqlite4java.SQLiteStatement;
 public class Database {
 
 	private File dbFile;
-	private SQLiteConnection db;
 
 	/**
 	 * Constructor for the database. Loads a file to the object under specified
@@ -43,14 +43,6 @@ public class Database {
 			throw new FileNotFoundException();
 		}
 
-		db = new SQLiteConnection(dbFile);
-
-		try {
-			db.open();
-		} catch (Exception e) {
-			System.err.println("Exception caught during construction ");
-			e.printStackTrace();
-		}
 	}
 
 	/**
@@ -61,9 +53,8 @@ public class Database {
 	 *            name of table to search in
 	 * @param columnsString
 	 *            String that represents columns to be selected from table
-	 * @return Table under specified format
-	 * @retuen conditions. Should be in format "where ... ", or " " if no
-	 *         conditions.
+	 * @return Table under specified format conditions. Should be in format
+	 *         "where ... ", or " " if no conditions.
 	 * @throws SQLiteException
 	 *             If exception occurred during SQL execution
 	 */
@@ -71,13 +62,17 @@ public class Database {
 			final String conditions) throws SQLiteException {
 
 		// Open database to fill the whole table
-		
+		SQLiteConnection db;
+		db = new SQLiteConnection(dbFile);
+
+		db.open();
+
 		Table returnTable = null; // Table to return that will be updated in the
 
 		String sql = String.format("SELECT %s FROM %s %s", columnsString,
 				tableName, conditions);
-		
-		System.out.println("SQL Performed :"+sql );
+
+		System.out.println("SQL Performed :" + sql);
 		// end.
 		// Get whole table data
 		SQLiteStatement tableRows = db.prepare(sql);
@@ -119,7 +114,7 @@ public class Database {
 		} finally {
 
 			tableRows.dispose();
-
+			db.dispose();
 		}
 
 		// Close Database in the end of usage
@@ -169,16 +164,17 @@ public class Database {
 
 			}
 
-			columnString=columnString.substring(0, columnString.length() - 1); // Chop off
-																	// last
-																	// comma
-		
+			columnString = columnString.substring(0, columnString.length() - 1); // Chop
+																					// off
+			// last
+			// comma
+
 			return getTable(tableName, columnString, "");
 		} catch (SQLiteException e) {
 
 			System.out
 					.println("Error During getting the Table, null will be returned");
-			
+
 			e.printStackTrace();
 
 			return null;
@@ -234,9 +230,10 @@ public class Database {
 
 			}
 
-			columnString=columnString.substring(0, columnString.length() - 1); // Chop off
-																	// last
-																	// comma
+			columnString = columnString.substring(0, columnString.length() - 1); // Chop
+																					// off
+			// last
+			// comma
 
 			return getTable(tableName, columnString, "where " + conditions);
 		} catch (SQLiteException e) {
@@ -258,16 +255,22 @@ public class Database {
 	 */
 	public void executeSQL(final String sql) {
 
+		SQLiteConnection db;
+		db = new SQLiteConnection(dbFile);
+
 		try {
+
+			db.open();
 
 			db.exec(sql);
 
 		} catch (Exception e) {
 
 			System.err.println("DB sql execution failed. Check your SQL query");
-
+			db.dispose();
 		}
 
+		db.dispose();
 	}
 
 	/**
@@ -280,8 +283,10 @@ public class Database {
 	public String getSQLQueryAsString(final String sql) {
 		String returnString = "";
 
-		try {
+		SQLiteConnection db = new SQLiteConnection(dbFile);
 
+		try {
+			db.open();
 			SQLiteStatement sqlResult = db.prepare(sql);
 
 			// Scroll through all rows
@@ -303,7 +308,7 @@ public class Database {
 			e.printStackTrace();
 
 		} finally {
-
+			db.dispose();
 			return returnString;
 		}
 
@@ -322,9 +327,10 @@ public class Database {
 	public String getSingleField(final String sql) {
 
 		String returnString = "";
-
+		SQLiteConnection db = new SQLiteConnection(dbFile);
 		try {
 
+			db.open();
 			SQLiteStatement sqlResult = db.prepare(sql);
 
 			// Scroll through all rows
@@ -342,19 +348,34 @@ public class Database {
 			e.printStackTrace();
 
 		} finally {
-
+			db.dispose();
 			return returnString;
 		}
 
 	}
 
 	/**
-	 * Action must be called in the end of db usage
+	 * Gets generalized time from string with format "yyyymmddhhmmss.MMMZ"
+	 * 
+	 * @param Date to convert
+	 * @return Calendar object
 	 */
-	public void close() {
-
-		db.dispose();
-
+	public Calendar getGeneralizedTime(String lastSyncDate) {
+		Calendar calTime = Calendar.getInstance();
+		
+		int year, month, day, hour, minutes, seconds;
+		
+		// First four characters will be year
+		year=Integer.parseInt(lastSyncDate.substring(0,4));
+		month=Integer.parseInt(lastSyncDate.substring(4,6));
+		day=Integer.parseInt(lastSyncDate.substring(6,8));
+		hour=Integer.parseInt(lastSyncDate.substring(8,10));
+		minutes=Integer.parseInt(lastSyncDate.substring(10,12));
+		seconds=Integer.parseInt(lastSyncDate.substring(12,14));
+		
+		
+		calTime.set(year, month, day, hour, minutes, seconds);
+		return calTime;
 	}
 
 }

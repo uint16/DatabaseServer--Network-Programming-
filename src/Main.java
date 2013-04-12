@@ -33,14 +33,16 @@ public class Main {
 		try {
 			db=new Database(databaseFilepath);
 			
-			ServerManager serverThread=new ServerManager(db, 10);
+			ServerManager serverThread=new ServerManager(db, 10, launchPort);
+			
+			new Thread(serverThread).start();
 			
 			
 			ClientThread clientThread=new ClientThread(db);
 			new Thread(clientThread).start();
 			
 			
-			serverThread.startListening(launchPort);
+			
 			
 			
 			
