@@ -78,6 +78,14 @@ public class Table {
 		
 		return null; // If column not found
 	}
+
+	public String[] getColumnsNames() {
+		return columnsNames;
+	}
+
+	public void setColumnsNames(String[] columnsNames) {
+		this.columnsNames = columnsNames;
+	}
 	
-	
+
 }

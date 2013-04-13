@@ -2,8 +2,13 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Calendar;
 
+import com.almworks.sqlite4java.SQLiteException;
+
+import ASN1Encoder.ASN1DecoderFail;
+import ASN1Encoder.Decoder;
 import ASN1Encoder.Encoder;
 import DatabaseHelper.Column;
 import DatabaseHelper.Database;
@@ -11,6 +16,8 @@ import DatabaseHelper.Table;
 
 public class ClientThread implements Runnable {
 
+	
+	
 	/**
 	 * Simple inet-address class that breaks up string of format
 	 * "aaa.aaa.aaa.aaa:pppp" into string adress and int port
@@ -22,7 +29,9 @@ public class ClientThread implements Runnable {
 
 		public int port;
 		public String adress;
-
+	
+		
+		
 		public InetAddress(String unf_adress) {
 
 			// Get a colon
@@ -41,11 +50,18 @@ public class ClientThread implements Runnable {
 	}
 
 	private Database db;
-
+	private boolean LOG=false;
 	boolean runLoop = true; // Identifies whether user loop should be runned or
 							// not. Can be stopped by internal error or other
 							// thread.
 
+	
+	
+	// Not very efficient, but will be used
+	private ArrayList<String[]> receivedPeerRows;
+	private ArrayList<String[]> receivedPeerAddressRows;
+	
+	
 	/**
 	 * Constructor for the client class
 	 * 
@@ -129,14 +145,14 @@ public class ClientThread implements Runnable {
 					ASNSyncRequest.addToSequence(new Encoder("2")); // Version
 					
 					// We need a timestamp in Generalized Time
-					ASNSyncRequest.addToSequence(new Encoder(lastSyncDate));
+					ASNSyncRequest.addToSequence(new Encoder(db.getGeneralizedTime(lastSyncDate)));
 					
 					Encoder TableNames=new Encoder();
 					
 					// Construct sequence of tables
 					TableNames.initSequence();
 					TableNames.addToSequence(new Encoder("peer"));
-					TableNames.addToSequence(new Encoder("peer_date"));
+					TableNames.addToSequence(new Encoder("peer_address"));
 					
 					ASNSyncRequest.addToSequence(TableNames);
 					
@@ -147,8 +163,61 @@ public class ClientThread implements Runnable {
 					
 					test.write(ByteBuffer.wrap(ASNSyncRequest.getBytes())); // Send Bytes over the network
 					
+					
+					
+					// Data sent, receive data, decode it and update database
+					
+					
+			
+					ByteBuffer serverResponse=ByteBuffer.allocate(4000); // Just cheat, read 1024 bytes, I'm tired and nothing works
+					test.read(serverResponse);
+					
+					
+					/*
+					
+					 ASNDatabase ::= SEQUENCE {
+					tables SEQUENCE OF Table,
+					snapshot GeneralizedTime OPTIONAL
+					}
+					 
+				*/
+						Decoder responseDecoder=(new Decoder(serverResponse.array()));
+						
+						
+						if (LOG){
+						System.out.println("Recvd Data length: "+responseDecoder.getBytes().length);
+						System.out.println("Recvd Data: "+responseDecoder.toString());
+						}
+						
+						
+						responseDecoder=responseDecoder.getContent();
+						
+						
+						Decoder tablesDecoder=responseDecoder.getFirstObject(true).getContent();
+						
+						// Decode peer and peer_address
+						processEncodedTable(tablesDecoder.getFirstObject(true));
+						processEncodedTable(tablesDecoder.getFirstObject(true));
+						//
+						
+						String responseTime=responseDecoder.getFirstObject(true).getGeneralizedTime_();
+						
+						if (LOG){
+						System.out.println("Response Time: "+responseTime);
+						}
+						
+						// Process Database
+						updateDB();
+						
+						
+						
+						// For the current peer we should update Sync date
+						db.executeSQL("UPDATE peer SET last_sync_date='"+Encoder.getGeneralizedTime(Calendar.getInstance())+"'  WHERE peer_id='"+peer_id+"'");
+						//runLoop=false;
+					 
+					
 					// For the purposes of one-connection test, close the loop after first conneciton
-					runLoop=false;
+					//runLoop=false;
 					
 					
 				
@@ -156,8 +225,15 @@ public class ClientThread implements Runnable {
 				} catch (IOException e) {
 					
 					System.err.printf("[%s:%d  Error]: Peer has timed out.", peerAddress.adress, peerAddress.port);
-					
+
+					//runLoop=false;
+				}catch (Exception e) {
+					System.err.println("Response Failed to decoded");
+					e.printStackTrace();
+
+				
 				}
+		
 				
 				
 				
@@ -169,6 +245,113 @@ public class ClientThread implements Runnable {
 		
 	}
 
+	/**
+	 * Updates peers id
+	 */
+	private void updateDB() {
+		
+		try {
+			// THese are all global_ID's
+			ArrayList<String> globalPeers=(db.getTable("SELECT global_peer_ID FROM peer")).getColumn(0).getRows();
+			
+			// Check all new global_id's
+			for (int i=0;i<this.receivedPeerRows.size();i++){
+				
+				if (globalPeers.contains(receivedPeerRows.get(i)[0])){
+					
+					if (LOG){
+						System.out.println("Global Peer Exists, ID: "+receivedPeerRows.get(i)[0]);
+					}
+				
+				// If this global id foesn't appear on the list
+				} else {
+					db.executeSQL(String.format("INSERT INTO peer (global_peer_ID, name, broadcastable, last_sync_date) VALUES (%s, \"%s\", \"%s\", \"%s\") ", receivedPeerRows.get(i)[0],receivedPeerRows.get(i)[1],receivedPeerRows.get(i)[2],receivedPeerRows.get(i)[3]));
+					db.executeSQL(String.format("INSERT INTO peer_address (peer_address, type, peer_ID) VALUES (\"%s\", \"%s\", %s)", receivedPeerAddressRows.get(i)[0],receivedPeerAddressRows.get(i)[1],db.getSingleField("SELECT peer_id FROM peer WHERE global_peer_ID="+receivedPeerRows.get(i)[0])));
+					
+				}
+				
+				
+			}
+			
+			
+			
+			
+		} catch (SQLiteException e) {
+			System.err.println("Error Occured while updating database...");
+			e.printStackTrace();
+		}
+		
+	}
+
+	private void processEncodedTable(Decoder dec) throws ASN1DecoderFail {
+		/*
+		Table ::= SEQUENCE {
+			name TableName,
+			fields SEQUENCE OF FieldName,
+			fieldTypes SEQUENCE OF FieldType,
+			rows SEQUENCE OF SEQUENCE OF NULLOCTETSTRING
+			}
+			
+			*/
+		dec=dec.getContent();
+		
+		// Get all stuff
+		String tableName=dec.getFirstObject(true).getString();
+		String[] columnNames=dec.getFirstObject(true).getSequenceOf(Encoder.TAG_UTF8String);
+	
+		// Skip names
+		dec.getFirstObject(true);
+		ArrayList<String[]> rows=new ArrayList<String[]>();
+		
+		
+		Decoder rowsDec=dec.getFirstObject(true);
+		rowsDec=rowsDec.getContent();
+		
+		// Load all rows
+		while (rowsDec.contentLength()>0){
+			
+			rows.add(rowsDec.getFirstObject(true).getSequenceOf(Encoder.TAG_UTF8String));
+			
+			
+		}
+		
+		// Print Received table
+		if (LOG) {
+		System.out.println("Table Name: "+tableName);
+		System.out.println("Column Names: ");
+		
+		// Print out all column names
+		for (int i=0;i<columnNames.length;i++){
+			System.out.println("	"+columnNames[i]);
+		}
+		
+		System.out.println("Field Values: ");
+		
+		for (int i=0;i<rows.size();i++){
+			
+			for (int j=0;j<rows.get(i).length;j++){
+			System.out.print(" "+rows.get(i)[j]);	
+			}
+			
+			System.out.println();
+			}
+			
+		}
+		
+		
+		
+		// Now update database, this depends on what table we have
+		if (tableName.equals("peer")){
+			
+			this.receivedPeerRows=rows;
+			
+		} else {
+			
+			this.receivedPeerAddressRows=rows;
+		}
+	}
+
+	
 
 
 }

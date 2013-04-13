@@ -13,9 +13,14 @@ public class Column<Type> {
 	private ArrayList<Type> rows;
 	
 	
-	boolean isEmpty=true;
+	private boolean isEmpty=true;
 	
 	
+	public ArrayList<Type> getRows() {
+		return rows;
+	}
+
+
 	/**
 	 * Instantiates column that holds undefined amount of objects.
 	 * @param columnId

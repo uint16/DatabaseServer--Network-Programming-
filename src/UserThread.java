@@ -6,31 +6,25 @@
  */
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Scanner;
 
 import DatabaseHelper.Database;
 
 public class UserThread extends Thread {
 
     private BufferedReader input;
-    private final String fileName;
+   
     private Database db;
 
     /**
      * Create UserThread object
-     * @param filename
+     * @param db2
      *            database file name to execute SQL queries on
      */
-    public UserThread(final String filename) {
-        fileName = filename;
-        try {
-            db = new Database(fileName);
-        } catch (final FileNotFoundException e) {
-
-            e.printStackTrace();
-        }
+    public UserThread(final Database db2) {
+        db=db2;
     }
 
     /**
@@ -41,6 +35,17 @@ public class UserThread extends Thread {
                 .print("To use this P2P system please enter a valid SQL query, invalid SQL queries will not be handled and the program will exit.\n");
         System.err
                 .print("Example of valid SQL queries: \"insert\", \"delete\".\n");
+        
+        Scanner kb=new Scanner(System.in);
+        
+        
+        while (kb.hasNextLine()){
+        	
+        	System.out.println(db.getSQLQueryAsString(kb.nextLine()));
+        	
+        	
+        }
+        
     }
 
     /**

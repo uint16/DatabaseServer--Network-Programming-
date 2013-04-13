@@ -58,8 +58,16 @@ public class Database {
 	 * @throws SQLiteException
 	 *             If exception occurred during SQL execution
 	 */
-	private Table getTable(final String tableName, final String columnsString,
+	public Table getTable(final String tableName, final String columnsString,
 			final String conditions) throws SQLiteException {
+	
+		String sql = String.format("SELECT %s FROM %s %s", columnsString,
+					tableName, conditions);
+		return getTable(sql);
+		
+	}
+
+	public Table getTable(String sql) throws SQLiteException {
 
 		// Open database to fill the whole table
 		SQLiteConnection db;
@@ -68,11 +76,9 @@ public class Database {
 		db.open();
 
 		Table returnTable = null; // Table to return that will be updated in the
-
-		String sql = String.format("SELECT %s FROM %s %s", columnsString,
-				tableName, conditions);
-
-		System.out.println("SQL Performed :" + sql);
+	
+		
+		//System.out.println("SQL Performed :" + sql);
 		// end.
 		// Get whole table data
 		SQLiteStatement tableRows = db.prepare(sql);
@@ -96,7 +102,7 @@ public class Database {
 
 			// Fill the content
 			while (tableRows.step()) {
-
+				
 				// Add A field to each column
 				for (int i = 0; i < tableRows.columnCount(); i++) {
 					tableColumns[i].addObject(tableRows.columnString(i));
@@ -107,7 +113,7 @@ public class Database {
 
 			}
 
-			returnTable = new Table(tableName, tableColumns, tableColumnsNames); // Update
+			returnTable = new Table("NNS", tableColumns, tableColumnsNames); // Update
 																					// table
 
 			// In case if something crashes, cursor still needs to be closed
@@ -301,14 +307,14 @@ public class Database {
 			}
 
 			sqlResult.dispose();
-
+			db.dispose();
 		} catch (Exception e) {
 
 			System.err.println("Error occured, lol... Actually it's SQL error");
 			e.printStackTrace();
-
-		} finally {
 			db.dispose();
+		} finally {
+			
 			return returnString;
 		}
 
@@ -375,6 +381,7 @@ public class Database {
 		
 		
 		calTime.set(year, month, day, hour, minutes, seconds);
+		
 		return calTime;
 	}
 

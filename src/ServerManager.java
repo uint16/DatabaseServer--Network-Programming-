@@ -101,6 +101,15 @@ public class ServerManager implements Runnable {
 	}
 		
 	
+	/**
+	 * Get a database
+	 * @return
+	 */
+	public Database getDB(){
+		
+		return db;
+		
+	}
 	
 	
 
